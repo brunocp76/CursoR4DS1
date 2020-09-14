@@ -1,0 +1,1014 @@
+---
+title: "Curso-R: R para Ciência de Dados I"
+author: "Bruno César Pasquini"
+date: 17/08/2020
+# date: strftime(Sys.time(), "%d/%m/%Y")
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(patchwork)
+library(tidyverse)
+library(ggthemes)
+library(ggdark)
+library(GGally)
+library(plotly)
+
+imdb <- read_rds("../dados/imdb.rds")
+```
+
+<br>
+
+## Um pequeno drama para começar...
+
+Athos e Fernando, cansados de ficarem confinados pela quarentena na vida de docência em EAD, decidem dar um rumo diferente em suas vidas...
+
+Os dois colegas de espírito empreendedor querem colocar toda a criatividade que lhes vaza pelos poros através da 7ª arte...
+
+Mas como empreender em cinema com segurança hoje em dia? Num período com tantos produtores, tantos diretores, onde todo mundo "entende", todo mundo é "crítico" (não, não estamos falando de futebol, mas de cinema mesmo!) e qualquer um com um celular consegue fazer um vídeo... Afinal, como empreender com segurança?
+
+Cinema não é uma ciência exata, mas nem por isso a experiência precisa ser um tiro no escuro...
+
+Vamos ajudar nossos amigos a empreender na 7ª arte usando o que poderia ser classificado como a 8ª arte: **Data Science**! Sim, esta *buzzword* dos tempos atuais é uma versão mais glamourosa do que se chamava *Modelagem Estatística* anos atrás...
+
+Combinando a elegância de algoritmos deduzidos com maestria a mais de 200 anos atrás por estatísticos geniais com algoritmos mais novos e mais brutos da computação que... como diria... bom, se você tiver poder computacional eles simplesmente convergem... temos o melhor dos mundos... Quase que algo assim... de cinema!
+
+E como embasar esta nossa análise?
+
+<br>
+
+## [Elementar, meu caro Watson!](https://en.wikipedia.org/wiki/The_Adventures_of_Sherlock_Holmes_(film))
+
+Sherlock Holmes a esta altura já deduziu que o melhor é utilizar a IMDb (e não o super sistema da IBM conhecido como `Watson`...)
+
+[IMDb](https://pt.wikipedia.org/wiki/IMDb), também conhecida como **Internet Movie Database** (ou *Base de Dados de Filmes na Internet* numa tradução livre), é uma base de dados online de informação sobre música, cinema, filmes, programas e comerciais para televisão e jogos de computador.
+
+Claro, aqui nos deteremos na parte de cinema e, mais especificamente, de filmes produzidos até 2016.
+
+E como faremos isso?
+
+Darth Vader certamente iria nos tentar a usar o "Lado `Python` da Força", mas como somos mocinhos aqui, faremos uso do "Lado **R** da Força" mesmo. :-)
+
+Sem mais delongas, vamos observar a IMDb com atenção:
+
+<br>
+
+### Variáveis texto:
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+imdb %>%
+   skimr::skim() %>% 
+   filter(skim_type == "character") %>% 
+   select(` Variável ` = skim_variable,
+          ` Faltantes ` = n_missing,
+          ` Preenchimento ` = complete_rate,
+          ` Mais curto ` = character.min,
+          ` Mais comprido ` = character.max,
+          ` Em branco ` = character.empty,
+          ` Únicos ` = character.n_unique) %>% 
+   mutate(
+      ` Preenchimento ` = scales::percent(
+         x = ` Preenchimento `,
+         accuracy = 0.01),
+            ` Mais curto ` = scales::comma(
+             x = ` Mais curto `,
+             accuracy = 1,
+             big.mark = ".",
+             decimal.mark = ","),
+            ` Únicos ` = scales::comma(
+             x = ` Únicos `,
+             accuracy = 1,
+             big.mark = ".",
+             decimal.mark = ",")
+      ) %>% 
+   kableExtra::kable(align = "r") %>% 
+   kableExtra::add_footnote(label = "Apenas variáveis texto")
+```
+
+<br>
+
+### Variáveis numéricas:
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+imdb %>%
+   skimr::skim() %>% 
+   filter(skim_type == "numeric") %>% 
+   select(` Variável ` = skim_variable,
+          ` Faltantes ` = n_missing,
+          ` Preenchimento ` = complete_rate,
+          ` Média ` = numeric.mean,
+          ` Desvio Padrão ` = numeric.sd,
+          ` Percentil   0 ` = numeric.p0,
+          ` Percentil  25 ` = numeric.p25,
+          ` Percentil  50 ` = numeric.p50,
+          ` Percentil  75 ` = numeric.p75,
+          ` Percentil 100 ` = numeric.p100) %>% 
+   mutate(
+      ` Preenchimento ` = scales::percent(
+         x = ` Preenchimento `,
+         accuracy = 0.01),
+          ` Média ` = scales::comma(
+             x = ` Média `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Desvio Padrão ` = scales::comma(
+             x = ` Desvio Padrão `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil   0 ` = scales::comma(
+             x = ` Percentil   0 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil  25 ` = scales::comma(
+             x = ` Percentil  25 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil  50 ` = scales::comma(
+             x = ` Percentil  50 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil  75 ` = scales::comma(
+             x = ` Percentil  75 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil 100 ` = scales::comma(
+             x = ` Percentil 100 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ",")
+      ) %>% 
+   kableExtra::kable(align = "r") %>% 
+   kableExtra::add_footnote(label = "Apenas variáveis numéricas")
+```
+
+<br>
+
+## [Houston, we have a problem!](https://en.wikipedia.org/wiki/Apollo_13_(film))
+
+Nossa base de dados não possui uma medida mais objetiva de sucesso financeiro.
+
+### Métricas Financeiras
+
+Por isso, vamos criar 2 variáveis para avaliar mais objetivamente o sucesso financeiro:
+
+- Lucro: A diferença entre a receita obtida e o orçamento empregado.
+- Receita/Orçamento: A razão entre a receita e o orçamento empregado.
+
+### Métricas de Sucesso de Crítica
+
+Além disso, utilizarei a nota da IMDb como medida de sucesso de crítica.
+
+Seria possível utilizar a quantidade de curtidas no Facebook como uma medida de sucesso, mas uma vez que o uso desta rede social vem crescendo ao longo do tempo, é possível antecipar que filmes mais recentes seriam desproporcionalmente beneficiados.
+
+Então eu *não* vou utilizar o número de curtidas no Facebook.
+
+### A relativização do tempo...
+
+Não, não vou entrar aqui nas questões da física relativística de Einstein, embora este seja um tema fascinante...
+
+A questão é como as métricas que utilizaremos são relativos no tempo.
+
+O custo de um filme é muito diferente hoje do que foi um século atrás. Então orçamento, receita e tudo o que deriva deles tem relação com o ano de produção do filme.
+
+Por isso, com base na distribuição dos quantis exposta acima e no fato de que esta base tem filmes produzidos até 2016, eu estou arbitrariamente decidindo utilizar apenas os filmes produzidos a partir de 1996. Assim garantimos pelo menos 75% dos dados (o primeiro quartil é de 1998) e pelo menos 20 anos de história do cinema
+
+Além disso, na rápida análise exploratória, descobrimos uma variável (pais) que tem um único valor (USA). Podemos descartá-la.
+
+Então usaremos 2 medidas de sucesso financeiro e 1 medida de sucesso de crítica.
+
+```{r, echo = FALSE}
+IMDb <- imdb %>% 
+   filter(ano >= 1996) %>% 
+   select(-pais) %>% 
+   mutate(lucro = receita - orcamento,
+          rec_orca = round(
+             x = receita / orcamento,
+             digits = 3))
+```
+
+Vamos examinar melhor essas...
+
+<br>
+
+### Variáveis de análise:
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+respostas <- IMDb %>%
+   select(nota_imdb, lucro, rec_orca)
+
+respostas %>% 
+   skimr::skim() %>% 
+   filter(skim_type == "numeric") %>% 
+   select(` Variável ` = skim_variable,
+          ` Faltantes ` = n_missing,
+          ` Preenchimento ` = complete_rate,
+          ` Média ` = numeric.mean,
+          ` Desvio Padrão ` = numeric.sd,
+          ` Percentil   0 ` = numeric.p0,
+          ` Percentil  25 ` = numeric.p25,
+          ` Percentil  50 ` = numeric.p50,
+          ` Percentil  75 ` = numeric.p75,
+          ` Percentil 100 ` = numeric.p100) %>% 
+   mutate(
+      ` Preenchimento ` = scales::percent(
+         x = ` Preenchimento `,
+         accuracy = 0.01),
+          ` Média ` = scales::comma(
+             x = ` Média `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Desvio Padrão ` = scales::comma(
+             x = ` Desvio Padrão `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil   0 ` = scales::comma(
+             x = ` Percentil   0 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil  25 ` = scales::comma(
+             x = ` Percentil  25 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil  50 ` = scales::comma(
+             x = ` Percentil  50 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil  75 ` = scales::comma(
+             x = ` Percentil  75 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ","),
+          ` Percentil 100 ` = scales::comma(
+             x = ` Percentil 100 `,
+             accuracy = 0.01,
+             big.mark = ".",
+             decimal.mark = ",")
+      ) %>% 
+   kableExtra::kable(align = "r") %>% 
+   kableExtra::add_footnote(label = "Variáveis de Análise")
+```
+
+<br>
+
+Já nos dá alguma idéia, mas é sempre bom ter isso de forma mais visual...
+
+Por variável...
+
+<br>
+
+### Lucro da Produção
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 01. Lucro da Produção.", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+dens_lucro <- respostas %>% 
+   ggplot() +
+   geom_density(aes(x = lucro), color = "green")  +
+   geom_vline(aes(xintercept = 0), linetype = 1, color = "white") +
+   geom_vline(aes(xintercept = mean(lucro)), linetype = 2, color = "cyan") +
+   labs(
+      title = "Lucro",
+      x = "",
+      y = "Densidade"
+   ) +
+   scale_x_continuous(labels = scales::dollar) +
+   dark_mode(theme_fivethirtyeight())
+
+box_lucro <- respostas %>% 
+   ggplot() +
+   geom_boxplot(aes(y = lucro), color = "green") +
+   geom_hline(aes(yintercept = 0), linetype = 1, color = "white") +
+   geom_hline(aes(yintercept = mean(lucro)), linetype = 2, color = "cyan") +
+   labs(
+      title = "Lucro",
+      x = "",
+      y = ""
+   ) +
+   scale_y_continuous(labels = scales::dollar) +
+   dark_mode(theme_fivethirtyeight())
+
+dens_lucro + box_lucro
+```
+<br>
+
+### Receita / Orçamento
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 02. Receita / Orçamento das Produções", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+dens_razao <- respostas %>% 
+   ggplot() +
+   geom_density(aes(x = rec_orca), color = "green")  +
+   geom_vline(aes(xintercept = 0), linetype = 1, color = "white") +
+   geom_vline(aes(xintercept = mean(rec_orca)), linetype = 2, color = "cyan") +
+   labs(
+      title = "Receita / Orçamento",
+      subtitle = "Truncado em uma relação de 15",
+      x = "",
+      y = "Densidade"
+   ) +
+   scale_x_continuous(limits = c(0, 15), breaks = seq(0, 15, 1)) +
+   dark_mode(theme_fivethirtyeight())
+
+box_razao <- respostas %>%
+   ggplot() +
+   geom_hline(aes(yintercept = 0), linetype = 1, color = "white") +
+   geom_hline(aes(yintercept = mean(rec_orca)), linetype = 2, color = "cyan", ) +
+   geom_boxplot(aes(y = rec_orca), color = "green", show.legend = TRUE) +
+   labs(
+      title = "Receita / Orçamento",
+      subtitle = "Truncado em uma relação de 10",
+      x = "",
+      y = ""
+   ) +
+   scale_y_continuous(limits = c(0, 10),
+                      breaks = seq(0, 10, 1)) +
+   dark_mode(theme_fivethirtyeight())
+
+dens_razao + box_razao
+```
+
+<br>
+
+### Notas da IMDb
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 03. Notas IMDb.", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+dens_notas <- respostas %>% 
+   ggplot() +
+   geom_density(aes(x = nota_imdb), color = "green")  +
+   geom_vline(aes(xintercept = mean(nota_imdb)), linetype = 2, color = "cyan") +
+   labs(
+      title = "Notas IMDb",
+      x = "",
+      y = "Densidade"
+   ) +
+   scale_x_continuous(breaks = seq(1.5, 9.5, 0.5)) +
+   dark_mode(theme_fivethirtyeight())
+
+box_notas <- respostas %>% 
+   ggplot() +
+   geom_boxplot(aes(y = nota_imdb), color = "green") +
+   geom_hline(aes(yintercept = mean(nota_imdb)), linetype = 2, color = "cyan") +
+   labs(
+      title = "Notas IMDb",
+      x = "",
+      y = ""
+   ) +
+   scale_y_continuous(breaks = seq(1, 11, 0.5)) +
+   dark_mode(theme_fivethirtyeight())
+
+dens_notas + box_notas
+```
+
+<br>
+
+## [My precious...](https://en.wikipedia.org/wiki/The_Lord_of_the_Rings:_The_Two_Towers)
+
+
+Aqui temos um tema delicado, definir o que seria sucesso...
+
+Com base na análise exploratória feita até então, vou arbitrariamente definir como sucesso qualquer um dos indicadores que esteja acima do valor arredondado do 75° percentil.
+
+Ou seja, um filme será considerado de sucesso se obtiver uma das seguintes condições:
+
+- Lucro de pelo menos $ 25 milhões
+- Relação entre Receita e Orçamento de pelo menos 2
+- Nota IMDb maior ou igual a 7
+
+
+Com estas definições, vamos olhar para os critérios que permitiram um filme atingir o sucesso...
+
+### Diretor
+
+Para não correr o risco de considerar diretores "sortudos" ou "azarados" (ou seja, que tenham tido muito sucesso ou um grande fracasso) com poucas produções, utilizaremos na análise apenas os diretores com mais de 5 produções dirigidas.
+
+A seguir vamos examinar o Lucro Médio (e Nota Média IMDb) por Diretor (com mais de 5 produções):
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 04. Lucro Médio por Diretor (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+IMDb %>% 
+   group_by(diretor) %>% 
+   summarize(
+      lucro_medio = mean(lucro, na.rm = TRUE),
+      rec_orca_media = mean(rec_orca, na.rm = TRUE),
+      nota_imdb_media = mean(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   ungroup() %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(lucro_medio)) %>% 
+   mutate(
+      diretor = forcats::fct_reorder(diretor, lucro_medio)
+   ) %>% 
+   head(15) %>% 
+   ggplot() +
+   geom_col(
+      aes(x = lucro_medio, y = diretor, fill = diretor),
+      show.legend = FALSE
+   ) +
+   geom_label(aes(
+      x = 0,
+      y = diretor,
+      label = scales::comma(x = nota_imdb_media,
+                            accuracy = 0.01,
+                            decimal.mark = ","))
+   ) +
+   labs(
+      title = "Lucro Médio de Diretores",
+      subtitle = "Com Nota Média IMDb",
+      x = "Lucro Médio das Produções",
+      y = "Diretores"
+   ) +
+   scale_x_continuous(breaks = seq(0, 120000000, 15000000),
+                      labels = scales::dollar) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+Em princípio destaca-se os diretores Jay Roach e Christopher Nolan. O primeiro por um lucro médio superior a $ 100 milhões, o segundo por chegar próximo a isso com uma nota IMDb média bastante elevada.
+
+<br>
+
+Mas como a média pode ser enganosa, vamos olhar a distribuição dos lucros.
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 05. Distribuição de Lucro por Diretor (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+top_15_diretores_lucro_mediano <- IMDb %>% 
+   group_by(diretor) %>% 
+   summarize(
+      lucro_mediano = median(lucro, na.rm = TRUE),
+      # rec_orca_mediano = median(rec_orca, na.rm = TRUE),
+      # nota_imdb_mediano = median(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(lucro_mediano)) %>% 
+   head(15)
+
+IMDb %>%
+   inner_join(top_15_diretores_lucro_mediano,
+              by = "diretor") %>% 
+   arrange(
+      desc(lucro_mediano),
+      desc(lucro)
+   ) %>% 
+   mutate(
+      diretor = forcats::fct_reorder(diretor,
+                                     lucro,
+                                     .fun = median,
+                                     .desc = FALSE)
+   ) %>% 
+   ggplot(aes(x = lucro, y = diretor, fill = diretor)) +
+   geom_vline(aes(xintercept = 0), linetype = 1, color = "white") +
+   geom_boxplot(show.legend = FALSE) +
+   labs(
+      title = "Lucro por Diretor",
+      subtitle = "Com pelo menos 5 Produções",
+      x = "Lucro das Produções",
+      y = "Diretores"
+   ) +
+   scale_x_continuous(# breaks = seq(0, 120000000, 15000000),
+                      labels = scales::dollar) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+
+Interessante que Jay Roach confirma a impressão que tive de ser uma aposta financeira boa. Por outro lado, Christopher Nolan mostrou ter uma boa média por um trabalho excepcional e uma mediana que é... digamos... bem mediana... Outros diretores que chamam a atençao aqui seriam James Wan, Michael Bay e Tim Story, com medianas elevadas e poucas ou nenhuma producões dando prejuízo...
+
+<br>
+
+A seguir vamos examinar as distribuições da relação entre receita e orçamento dos diretores com maior relação entre receita e orçamento, uma métrica completamente diferente...
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 06. Distribuição de Receita por Orçamento por Diretor (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+top_15_diretores_rec_orca_mediano <- IMDb %>% 
+   group_by(diretor) %>% 
+   summarize(
+      # lucro_mediano = median(lucro, na.rm = TRUE),
+      rec_orca_mediano = median(rec_orca, na.rm = TRUE),
+      # nota_imdb_mediano = median(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(rec_orca_mediano)) %>% 
+   head(15)
+
+IMDb %>%
+   inner_join(top_15_diretores_rec_orca_mediano,
+              by = "diretor") %>% 
+   arrange(
+      desc(rec_orca_mediano),
+      desc(rec_orca)
+   ) %>% 
+   mutate(
+      diretor = forcats::fct_reorder(diretor,
+                                     rec_orca,
+                                     .fun = median,
+                                     .desc = FALSE)
+   ) %>% 
+   ggplot(aes(x = rec_orca, y = diretor, fill = diretor)) +
+   geom_vline(aes(xintercept = 0), linetype = 1, color = "white") +
+   geom_boxplot(show.legend = FALSE) +
+   labs(
+      title = "Receita / Orçamento por Diretor",
+      subtitle = "Com pelo menos 5 Produções",
+      x = "Receita / Orçamento das Produções",
+      y = "Diretores"
+   ) +
+   scale_x_continuous(breaks = seq(0, 60, 5)) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+
+O nome de Jay Roach aparece mais uma vez, mas com uma consistência grande na relação entre Receita e Orçamento, bastante concentrados em um valor "baixo". Aqui o destaque é para o diretor James Wan... Tim Story aparece como uma terceira opção...
+
+<br>
+
+A seguir vamos examinar as Notas IMDb Médias (e Receita / Orçamento média) por Diretor (com mais de 5 produções):
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 07. Nota IMDB Média por Diretor (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+IMDb %>% 
+   group_by(diretor) %>% 
+   summarize(
+      lucro_medio = mean(lucro, na.rm = TRUE),
+      rec_orca_media = mean(rec_orca, na.rm = TRUE),
+      nota_imdb_media = mean(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   ungroup() %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(nota_imdb_media)) %>% 
+   mutate(
+      diretor = forcats::fct_reorder(diretor, nota_imdb_media)
+   ) %>% 
+   head(15) %>% 
+   ggplot() +
+   geom_col(
+      aes(x = nota_imdb_media, y = diretor, fill = diretor),
+      show.legend = FALSE
+   ) +
+   geom_label(aes(
+      x = 0,
+      y = diretor,
+      label = scales::comma(x = rec_orca_media,
+                            accuracy = 0.01,
+                            decimal.mark = ","))
+   ) +
+   labs(
+      title = "Nota IMDb Média de Diretores",
+      subtitle = "Com média da razão Receita / Orçamento",
+      x = "Nota IMDb Média",
+      y = "Diretores"
+   ) +
+   scale_x_continuous(breaks = seq(0, 8.5, 0.5),
+                      labels = scales::comma) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+
+Mais uma vez Christopher Nolan desponta como a melhor média de Notas IMDb.
+
+Quentin Tarantino não fica muito atrás, tendo inclusive uma relação entre Receita e Orçamento melhor que Christopher Nolan.
+
+<br>
+
+Por fim, para não ficar apenas com a média, vamos examinar as distribuições das Notas IMDb médias dos diretores com maiores Notas IMDb médias.
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 08. Distribuição de Notas IMDb Médias por Diretor (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+top_15_diretores_notas_imdb_mediana <- IMDb %>% 
+   group_by(diretor) %>% 
+   summarize(
+      # lucro_mediano = median(lucro, na.rm = TRUE),
+      # rec_orca_mediano = median(rec_orca, na.rm = TRUE),
+      nota_imdb_mediano = median(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(nota_imdb_mediano)) %>% 
+   head(15)
+
+IMDb %>%
+   inner_join(top_15_diretores_notas_imdb_mediana,
+              by = "diretor") %>% 
+   arrange(
+      desc(nota_imdb_mediano),
+      desc(nota_imdb)
+   ) %>% 
+   mutate(
+      diretor = forcats::fct_reorder(diretor,
+                                     nota_imdb,
+                                     .fun = median,
+                                     .desc = FALSE)
+   ) %>% 
+   ggplot(aes(x = nota_imdb, y = diretor, fill = diretor)) +
+   geom_boxplot(show.legend = FALSE) +
+   labs(
+      title = "Notas IMDb por Diretor",
+      subtitle = "Com pelo menos 5 Produções",
+      x = "Notas IMDb das Produções",
+      y = "Diretores"
+   ) +
+   
+   scale_x_continuous(breaks = seq(5, 9.5, 0.5)) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+
+Christopher Nolan se destaca mais uma vez aqui, por ter uma ótima distribuição de notas IMDb. Quentin Tarantino também é bem colocado aqui, além de não possuir, tecnicamente falando, outliers nesta distribuição. Por fim, David Fincher não faz feito não...
+
+<br>
+
+
+
+### Atores e Atrizes Principais
+
+Para não correr o risco de considerar atores e atrizes principais "sortudos" ou "azarados" (ou seja, que tenham tido muito sucesso ou um grande fracasso) com poucas produções, utilizaremos na análise apenas os atores ou atrizes principais com mais de 5 produções estreladas.
+
+A seguir vamos examinar o Lucro Médio (e Nota Média IMDb) por Ator ou Atriz Principal (com mais de 5 produções):
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 09. Lucro Médio por Ator ou Atriz principal (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+IMDb %>% 
+   group_by(ator_1) %>% 
+   summarize(
+      lucro_medio = mean(lucro, na.rm = TRUE),
+      rec_orca_media = mean(rec_orca, na.rm = TRUE),
+      nota_imdb_media = mean(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   ungroup() %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(lucro_medio)) %>% 
+   mutate(
+      ator_1 = forcats::fct_reorder(ator_1, lucro_medio)
+   ) %>% 
+   head(15) %>% 
+   ggplot() +
+   geom_col(
+      aes(x = lucro_medio, y = ator_1, fill = ator_1),
+      show.legend = FALSE
+   ) +
+   geom_label(aes(
+      x = 0,
+      y = ator_1,
+      label = scales::comma(x = nota_imdb_media,
+                            accuracy = 0.01,
+                            decimal.mark = ","))
+   ) +
+   labs(
+      title = "Lucro Médio de Atores ou Atrizes Principais",
+      subtitle = "Com Nota Média IMDb",
+      x = "Lucro Médio das Produções",
+      y = "Atores ou Atrizes Principais"
+   ) +
+   scale_x_continuous(breaks = seq(0, 120000000, 15000000),
+                      labels = scales::dollar) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+Quatro atores ou atrizes principais se destacam aqui. Steve Carell, Jennifer Lawrence, Bradley Cooper e Natalie Portman.
+
+Jennifer Lawrence, Leonardo DiCaprio e Tom Hanks também despontam por terem um lucro médio elevado com boas notas IMDb médias.
+
+<br>
+
+Mas como a média pode ser enganosa, vamos olhar a distribuição dos lucros.
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 10. Distribuição de Lucro por Ator ou Atriz Principal (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+top_15_atores_lucro_mediano <- IMDb %>% 
+   group_by(ator_1) %>% 
+   summarize(
+      lucro_mediano = median(lucro, na.rm = TRUE),
+      # rec_orca_mediano = median(rec_orca, na.rm = TRUE),
+      # nota_imdb_mediano = median(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(lucro_mediano)) %>% 
+   head(15)
+
+IMDb %>%
+   inner_join(top_15_atores_lucro_mediano,
+              by = "ator_1") %>% 
+   arrange(
+      desc(lucro_mediano),
+      desc(lucro)
+   ) %>% 
+   mutate(
+      ator_1 = forcats::fct_reorder(ator_1,
+                                     lucro,
+                                     .fun = median,
+                                     .desc = FALSE)
+   ) %>% 
+   ggplot(aes(x = lucro, y = ator_1, fill = ator_1)) +
+   geom_vline(aes(xintercept = 0), linetype = 1, color = "white") +
+   geom_boxplot(show.legend = FALSE) +
+   labs(
+      title = "Lucro por Ator ou Atriz Principal",
+      subtitle = "Com pelo menos 5 Produções",
+      x = "Lucro das Produções",
+      y = "Ator ou Atriz Principal"
+   ) +
+   scale_x_continuous(# breaks = seq(0, 120000000, 15000000),
+                      labels = scales::dollar) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+
+Interessante como a análise de um boxplot pode mostrar outliers que distorcem a média...
+
+Dos quatro atores ou atrizes principais citados anteriormente (Steve Carell, Jennifer Lawrence, Bradley Cooper e Natalie Portman), esta última nem aparece entre as melhores medianas...
+
+Jennifer Lawrence teve um trabalho que foi destaque, o que influenciou sua média.
+
+E mesmo com a melhor mediana de lucro, um quarto dos filmes estrelados por Steve Carell deram prejuízo...
+
+Seria necessário um enredo de cinema para explicar isso...
+
+<br>
+
+A seguir vamos examinar as distribuições da relação entre receita e orçamento dos atores ou atrizes principais com maior relação entre receita e orçamento, uma métrica completamente diferente...
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 11. Distribuição de Receita por Orçamento por Ator ou Atriz Principal (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+top_15_ator_1es_rec_orca_mediano <- IMDb %>% 
+   group_by(ator_1) %>% 
+   summarize(
+      # lucro_mediano = median(lucro, na.rm = TRUE),
+      rec_orca_mediano = median(rec_orca, na.rm = TRUE),
+      # nota_imdb_mediano = median(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(rec_orca_mediano)) %>% 
+   head(15)
+
+IMDb %>%
+   inner_join(top_15_ator_1es_rec_orca_mediano,
+              by = "ator_1") %>% 
+   arrange(
+      desc(rec_orca_mediano),
+      desc(rec_orca)
+   ) %>% 
+   mutate(
+      ator_1 = forcats::fct_reorder(ator_1,
+                                     rec_orca,
+                                     .fun = median,
+                                     .desc = FALSE)
+   ) %>% 
+   ggplot(aes(x = rec_orca, y = ator_1, fill = ator_1)) +
+   geom_vline(aes(xintercept = 0), linetype = 1, color = "white") +
+   geom_boxplot(show.legend = FALSE) +
+   labs(
+      title = "Receita / Orçamento por Ator ou Atriz Principal",
+      subtitle = "Com pelo menos 5 Produções",
+      x = "Receita / Orçamento das Produções",
+      y = "Ator ou Atriz Principal"
+   ) +
+   scale_x_continuous(breaks = seq(0, 60, 5)) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+
+Aqui mais uma vez o destaque é Steve Carell, com uma mediana elevada da relação entre Receita e Orçamento.
+
+Jennifer Lawrence e Bradley Cooper também se mostram boas opções.
+
+<br>
+
+A seguir vamos examinar as Notas IMDb Médias (e Receita / Orçamento média) por Ator ou Atriz Principal (com mais de 5 produções):
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 12. Nota IMDB Média por Ator ou Atriz Principal (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+IMDb %>% 
+   group_by(ator_1) %>% 
+   summarize(
+      lucro_medio = mean(lucro, na.rm = TRUE),
+      rec_orca_media = mean(rec_orca, na.rm = TRUE),
+      nota_imdb_media = mean(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   ungroup() %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(nota_imdb_media)) %>% 
+   mutate(
+      ator_1 = forcats::fct_reorder(ator_1, nota_imdb_media)
+   ) %>% 
+   head(15) %>% 
+   ggplot() +
+   geom_col(
+      aes(x = nota_imdb_media, y = ator_1, fill = ator_1),
+      show.legend = FALSE
+   ) +
+   geom_label(aes(
+      x = 0,
+      y = ator_1,
+      label = scales::comma(x = rec_orca_media,
+                            accuracy = 0.01,
+                            decimal.mark = ","))
+   ) +
+   labs(
+      title = "Nota IMDb Média de Ator ou Atriz Principal",
+      subtitle = "Com média da razão Receita / Orçamento",
+      x = "Nota IMDb Média",
+      y = "Ator ou Atriz Principal"
+   ) +
+   scale_x_continuous(breaks = seq(0, 8.5, 0.5),
+                      labels = scales::comma) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+
+A disputa aqui é mais apertada. Nomes conhecidos tais como Leonardo DiCaprio, Christian Bale e Tom Hanks ficam ligeiramente à frente...
+
+<br>
+
+Por fim, para não ficar apenas com a média, vamos examinar as distribuições das Notas IMDb médias dos Atores ou Atrizes Principais com maiores Notas IMDb médias.
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 13. Distribuição de Notas IMDb Médias por ator_1 (com mais de 5 produções).", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+top_15_ator_1es_notas_imdb_mediana <- IMDb %>% 
+   group_by(ator_1) %>% 
+   summarize(
+      # lucro_mediano = median(lucro, na.rm = TRUE),
+      # rec_orca_mediano = median(rec_orca, na.rm = TRUE),
+      nota_imdb_mediano = median(nota_imdb, na.rm = TRUE),
+      qtde_filmes = n()
+   ) %>% 
+   filter(qtde_filmes > 5) %>% 
+   arrange(desc(nota_imdb_mediano)) %>% 
+   head(15)
+
+IMDb %>%
+   inner_join(top_15_ator_1es_notas_imdb_mediana,
+              by = "ator_1") %>% 
+   arrange(
+      desc(nota_imdb_mediano),
+      desc(nota_imdb)
+   ) %>% 
+   mutate(
+      ator_1 = forcats::fct_reorder(ator_1,
+                                     nota_imdb,
+                                     .fun = median,
+                                     .desc = FALSE)
+   ) %>% 
+   ggplot(aes(x = nota_imdb, y = ator_1, fill = ator_1)) +
+   geom_boxplot(show.legend = FALSE) +
+   labs(
+      title = "Notas IMDb por Ator ou Atriz Principal",
+      subtitle = "Com pelo menos 5 Produções",
+      x = "Notas IMDb das Produções",
+      y = "Ator ou Atriz Principal"
+   ) +
+   scale_x_continuous(breaks = seq(4, 9.5, 0.5)) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+```
+
+Como mencionei anteriormente, a disputa aqui é mais apertada. Nomes conhecidos tais como Leonardo DiCaprio, Christian Bale e Tom Hanks formam como que um primeiro pelotão... Ryan Gosling, Philip Seymour Hoffman e Jennifer Lawrence formam como que o segundo pelotão das melhores escolhas
+
+<br>
+
+Eu poderia seguir com a análise de atores e atrizes coadjuvantes, mas entendo que a maior contribuição vem dos atores e atrizes principais.
+
+Por uma questão de tempo disponível para a análise, tentarei analisar outras métricas.
+
+
+### Gênero
+
+A seguir vamos examinar o Lucro Médio (e Nota Média IMDb) por Gênero:
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center", fig.cap = "Figura 14. Distribuição de Lucros dos principais Gêneros.", fig.showtext = 'Para filmes produzidos a partir de 1996', fig.keep = 'all', fig.width = 11}
+filmes_classificados <- IMDb %>%
+   filter(!is.na(generos)) %>% 
+   mutate(
+      filme_drama = str_detect(generos, pattern = "Drama"),
+      filme_aventura = str_detect(generos, pattern = "Adventure"),
+      filme_policial = str_detect(generos, pattern = "Crime"),
+      filme_suspense = str_detect(generos, pattern = "Thriller"),
+      filme_acao = str_detect(generos, pattern = "Action"),
+      filme_comedia = str_detect(generos, pattern = "Comedy"),
+      filme_ficcao = str_detect(generos, pattern = "Sci-Fi"),
+      filme_romance = str_detect(generos, pattern = "Romance"),
+      filme_horror = str_detect(generos, pattern = "Horror")
+      )
+
+box_drama <- filmes_classificados %>% 
+   filter(filme_drama) %>% 
+   ggplot() +
+   geom_boxplot(aes(x = lucro), color = "cyan") +
+   labs(
+      title = "Distribuição dos Lucros",
+      subtitle = "Em filmes de drama"
+   ) +
+   scale_x_continuous(labels = scales::dollar) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+
+box_aventura <- filmes_classificados %>% 
+   filter(filme_aventura) %>% 
+   ggplot() +
+   geom_boxplot(aes(x = lucro), color = "cyan") +
+   labs(
+      title = "Distribuição dos Lucros",
+      subtitle = "Em filmes de aventura"
+   ) +
+   scale_x_continuous(labels = scales::dollar) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+
+box_policial <- filmes_classificados %>% 
+   filter(filme_policial) %>% 
+   ggplot() +
+   geom_boxplot(aes(x = lucro), color = "cyan") +
+   labs(
+      title = "Distribuição dos Lucros",
+      subtitle = "Em filmes de policial"
+   ) +
+   scale_x_continuous(labels = scales::dollar) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+
+box_suspense <- filmes_classificados %>% 
+   filter(filme_suspense) %>% 
+   ggplot() +
+   geom_boxplot(aes(x = lucro), color = "cyan") +
+   labs(
+      title = "Distribuição dos Lucros",
+      subtitle = "Em filmes de suspense"
+   ) +
+   scale_x_continuous(labels = scales::dollar) +
+   dark_theme_gray() +
+   theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+   )
+
+box_drama +
+   box_aventura +
+   box_policial +
+   box_suspense
+```
+O gênero não garante lucro, não é uma boa medida...
+
+<br>
+
+## Conclusões
+
+### Diretor
+
+Com bases nas análises, a minha recomendação para o Athos e Fernando é que eles considerem contratar o *diretor Christopher Nolan* que combina uma boa performance financeira com uma boa avaliação da crítica.
+
+Se a prioridade for por segurança financeira, a recomendação é pelo *diretor Jay Roach*.
+
+Se a prioridade for pela avaliação da crítica, a recomendação fica entre os *diretores Christopher Nolan ou Quentin Tarantino*.
+
+<br>
+
+### Ator ou Atriz Principal
+
+Com bases nas análises, a minha recomendação para o Athos e Fernando é que eles considerem contratar ou o *ator Steve Carell*, se a prioridade for boa performance financeira...
+
+... ou o *ator Leonardo DiCaprio* se a prioridade for a avaliação da crítica.
+
+Aqui não temos um claro destaque. Talvez um filme em que estes dois atores atuem juntos seja um grande sucesso!
+
+
